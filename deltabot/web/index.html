@@ -1,0 +1,999 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deltabot Paper Test</title>
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root {
+    --bg: #0b0e13; --panel: #12161d; --panel2: #171c25; --line: #232a36; --text: #e6e9ef;
+    --muted: #8b95a7; --green: #22c55e; --red: #ef4444; --amber: #f59e0b; --blue: #3b82f6; --violet: #a78bfa;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 16px; }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .logo { font-weight: 700; font-size: 18px; letter-spacing: -.02em; }
+  .logo span { color: var(--amber); }
+  .pill { padding: 4px 10px; border-radius: 999px; font-size: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); white-space: nowrap; }
+  .pill.paper { color: var(--amber); border-color: #5c4310; background: #1f1808; }
+  .pill.ok { color: var(--green); border-color: #14532d; background: #0b1f13; }
+  .pill.run { color: var(--green); border-color: #14532d; background: #0b1f13; }
+  .pill.err { color: var(--red); border-color: #5b1a1a; background: #1f0c0c; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; margin-right: 6px; vertical-align: 1px; }
+  .run .dot { animation: pulse 1.4s infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  .spacer { flex: 1; }
+  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); padding: 7px 14px; }
+  button:hover { border-color: #3a4456; }
+  button.primary { background: var(--green); border-color: var(--green); color: #04130a; font-weight: 600; }
+  button.danger { background: #2a1010; border-color: #5b1a1a; color: #fca5a5; }
+  button:disabled { opacity: .5; cursor: default; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .card .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .card .v { font-size: 24px; font-weight: 650; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .card .s { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .pos { color: var(--green); } .neg { color: var(--red); }
+  .bar { height: 8px; background: var(--panel2); border-radius: 99px; overflow: hidden; margin-top: 10px; position: relative; }
+  .bar > i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, var(--amber), var(--green)); border-radius: 99px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; overflow-x: auto; }
+  .tab { background: none; border: none; border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); padding: 10px 14px; white-space: nowrap; }
+  .tab.active { color: var(--text); border-bottom-color: var(--amber); }
+  .grid { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr); gap: 16px; }
+  @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0; margin-bottom: 16px; }
+  .panel h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .panel h3 .muted { font-weight: 400; }
+  .muted { color: var(--muted); font-size: 12px; }
+  #chart, #rchart { height: 440px; }
+  #eqchart, #reqchart { height: 220px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: -2px 0 8px; }
+  .legend b { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: 3px; margin-right: 5px; }
+  .tbl { width: 100%; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  tr.click { cursor: pointer; } tr.click:hover td { background: var(--panel2); }
+  tr.sel td { background: #1b2230; }
+  .tag { font-size: 11px; padding: 2px 7px; border-radius: 6px; font-weight: 600; }
+  .tag.long { background: #0b2a17; color: var(--green); } .tag.short { background: #2c0f0f; color: var(--red); }
+  .log { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: #b6c0cf; background: #0a0d12; border-radius: 8px; padding: 10px; height: 260px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+  .empty { color: var(--muted); padding: 14px 0; text-align: center; font-size: 13px; }
+  .note { background: #1f1808; border: 1px solid #5c4310; color: #fcd34d; border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .seg button { border-radius: 0; margin-left: -1px; } .seg button:first-child { border-radius: 8px 0 0 8px; } .seg button:last-child { border-radius: 0 8px 8px 0; }
+  .seg button.on { background: #233046; border-color: #3b82f6; }
+  label { display: block; color: var(--muted); font-size: 12px; margin: 10px 0 4px; }
+  input, select { font: inherit; width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 16px; }
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 10; }
+  .modal.open { display: flex; }
+  .modal .box { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; width: 100%; max-width: 440px; }
+  .hidden { display: none !important; }
+  .bots { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .bot { background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; position: relative; min-width: 0; }
+  .bot.dead { opacity: .55; border-color: #5b1a1a; }
+  .bot.star { border-color: #14532d; box-shadow: 0 0 0 1px #14532d inset; }
+  .bot .nm { font-weight: 650; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .bot .st { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; letter-spacing: .03em; }
+  .st.alive { background: #0b2a17; color: var(--green); } .st.dead { background: #2c0f0f; color: var(--red); } .st.star { background: #2a2108; color: var(--amber); }
+  .bot .pl { font-size: 22px; font-weight: 650; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
+  .gauge { height: 8px; border-radius: 99px; background: #0b0e13; position: relative; margin: 8px 0 4px; overflow: hidden; }
+  .gauge .mid { position: absolute; left: 33.3%; top: 0; bottom: 0; width: 1px; background: #8b95a7; }
+  .gauge i { position: absolute; top: 0; bottom: 0; border-radius: 99px; }
+  .bot .meta { color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+  .ai { background: #12111d; border: 1px solid #3b2f6b; border-radius: 12px; padding: 12px 14px; }
+  .ai h4 { margin: 0 0 6px; font-size: 13px; color: var(--violet); display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+  .ai .act { font-size: 13px; padding: 6px 0; border-top: 1px solid #262140; }
+  .ai details { margin-top: 8px; color: var(--muted); font-size: 12px; }
+  .ai details p { white-space: pre-wrap; margin: 6px 0 0; }
+  .bot .now { font-size: 12px; margin-top: 8px; color: var(--text); }
+  .bot .near { font-size: 11.5px; color: var(--muted); margin-top: 3px; padding-left: 8px; border-left: 2px solid #2c3442; overflow-wrap: anywhere; }
+  .bot .ev { font-size: 11.5px; color: #c9d1d9; margin-top: 4px; overflow-wrap: anywhere; }
+  .bot .ev span { color: var(--amber); font-variant-numeric: tabular-nums; }
+  .ana-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 6px 0 10px; }
+  .ana-grid div { background: var(--panel2); border-radius: 10px; padding: 8px 10px; }
+  .ana-grid b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .ana-grid span { color: var(--muted); font-size: 12px; }
+  .sv { background: #05070a; border: 1px solid #1f2a1f; border-radius: 12px; padding: 14px 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .sv .hd { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; letter-spacing: .08em; font-size: 12px; color: #9ca3af; }
+  .sv .hd b { color: #e5e7eb; font-size: 14px; }
+  .sv .alive { color: #22c55e; } .sv .dead { color: #ef4444; } .sv .warn { color: #f59e0b; }
+  .sv .big { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 12px 0; }
+  .sv .big div { border-left: 2px solid #1f2937; padding-left: 10px; }
+  .sv .big b { display: block; font-size: 22px; color: #e5e7eb; font-variant-numeric: tabular-nums; }
+  .sv .big span { font-size: 11px; color: #6b7280; letter-spacing: .06em; text-transform: uppercase; }
+  .sv .desks { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .sv .desk { border: 1px solid #1f2937; border-radius: 10px; padding: 10px; background: #0a0e14; min-width: 0; }
+  .sv .desk.off { opacity: .5; border-color: #3f1d1d; }
+  .sv .desk .t { display: flex; justify-content: space-between; font-weight: 700; letter-spacing: .1em; color: #e5e7eb; }
+  .sv .desk .w { color: #6b7280; font-size: 11px; margin: 2px 0 6px; }
+  .sv .desk .p { font-size: 18px; font-variant-numeric: tabular-nums; }
+  .sv .desk .r { font-size: 11.5px; color: #9ca3af; margin-top: 6px; overflow-wrap: anywhere; }
+  .sv .log { height: 220px; margin-top: 12px; background: #030405; color: #a7f3d0; font-size: 11.5px; }
+  .rules { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
+  .progress { height: 6px; background: var(--panel2); border-radius: 99px; overflow: hidden; margin: 10px 0; }
+  .progress i { display: block; height: 100%; background: var(--blue); transition: width .3s; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">delta<span>bot</span></div>
+    <span class="pill paper">PAPER TEST · no real orders</span>
+    <span id="botPill" class="pill"><span class="dot"></span>stopped</span>
+    <span id="aggPill" class="pill err hidden">TARGET MODE · high risk</span>
+    <div class="spacer"></div>
+    <span id="connPill" class="pill">Delta account not connected</span>
+    <button id="connectBtn">Connect Delta</button>
+  </header>
+
+  <div class="cards">
+    <div class="card"><div class="k">Paper balance</div><div class="v" id="cEq">–</div><div class="s" id="cStart">–</div></div>
+    <div class="card"><div class="k">Profit / loss</div><div class="v" id="cPnl">–</div><div class="s" id="cPnlPct">–</div></div>
+    <div class="card"><div class="k">Target</div><div class="v" id="cTarget">–</div>
+      <div class="bar"><i id="cBar" style="width:0%"></i></div><div class="s" id="cNeed">–</div></div>
+    <div class="card"><div class="k">Trades booked</div><div class="v" id="cTrades">0</div><div class="s" id="cWin">–</div></div>
+    <div class="card"><div class="k">Open positions</div><div class="v" id="cOpen">0</div><div class="s" id="cOpenPnl">–</div></div>
+    <div class="card"><div class="k">Target chance</div><div class="v" id="cChance">?</div>
+      <div class="s" id="cChanceSub">not analysed yet</div>
+      <button id="planBtn" class="primary" style="margin-top:8px;padding:5px 12px;font-size:12px">Plan &amp; analyse</button></div>
+    <div class="card"><div class="k">Session time left</div><div class="v" id="cTime">–</div><div class="s" id="cTimeSub">press Start bot</div></div>
+  </div>
+
+  <div class="panel hidden" id="dtPanel">
+    <h3>Day Trader <span class="muted">pipeline adapted from jakeschincariol/day-trader-skill (MIT) · paper · nothing trades without your approval</span></h3>
+    <div id="dtBody"></div>
+  </div>
+  <div class="panel hidden" id="svPanel"><div class="sv" id="svBody"></div></div>
+  <div class="panel hidden" id="awPanel">
+    <h3>All-weather portfolio <span class="muted" id="awSub"></span></h3>
+    <div id="awTop"></div>
+    <div class="grid">
+      <div><h3 style="margin-top:6px">Backtest 2020 to today <span class="muted">portfolio (green) vs holding BTC (grey), ₹ grown from your start</span></h3><div id="awChart" style="height:260px"></div></div>
+      <div id="awBt"></div>
+    </div>
+    <div id="awLive"></div>
+  </div>
+  <div class="panel hidden" id="moonPanel">
+    <h3>Moonshot <span class="muted" id="moonSub"></span></h3>
+    <div class="progress hidden" id="moonProg"><i style="width:0%"></i></div>
+    <div id="moonBody"></div>
+  </div>
+  <div class="panel hidden" id="planPanel">
+    <h3>Strategy plan <span class="muted" id="planSub"></span></h3>
+    <div class="progress hidden" id="planProg"><i style="width:0%"></i></div>
+    <div id="monitorStrip"></div>
+    <div id="planBody"></div>
+  </div>
+  <div class="panel hidden" id="anaPanel">
+    <h3>Target analysis <span class="muted" id="anaSub"></span></h3>
+    <div class="progress hidden" id="anaProg"><i style="width:0%"></i></div>
+    <div id="anaBody"></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="live">Live paper test</button>
+    <button class="tab" data-tab="replay">Replay on past data</button>
+    <button class="tab" data-tab="settings">Settings</button>
+  </div>
+
+  <!-- LIVE -->
+  <section id="tab-live">
+    <div id="haltNote" class="note hidden"></div>
+    <div class="panel hidden" id="arenaPanel">
+      <h3>Bot arena <span class="muted" id="arenaSub"></span></h3>
+      <p class="rules" id="arenaRules"></p>
+      <div class="bots" id="bots"></div>
+      <div id="claudeBox" style="margin-top:14px"></div>
+    </div>
+    <div class="grid">
+      <div>
+        <div class="panel">
+          <h3><span id="chartTitle">Chart</span> <span class="muted" id="chartSub"></span></h3>
+          <div class="legend">
+            <span><b style="background:#f59e0b"></b>EMA 20 (fast trend)</span>
+            <span><b style="background:#a78bfa"></b>EMA 50 (slow trend / exit line)</span>
+            <span><b style="background:#3b82f6"></b>Breakout channel</span>
+            <span>▲▼ entries · ● exits · dashed = entry / stop / target</span>
+          </div>
+          <div id="chart"></div>
+        </div>
+        <div class="panel">
+          <h3>Open positions</h3>
+          <div class="tbl"><table><thead><tr><th>Market</th><th>Type</th><th>Side</th><th>Size</th><th>Entry</th><th>Now</th><th>Stop</th><th>Target</th><th>P&amp;L</th></tr></thead>
+          <tbody id="openBody"></tbody></table></div>
+        </div>
+        <div class="panel">
+          <h3>Booked trades</h3>
+          <div class="tbl"><table><thead><tr><th>Closed</th><th>Market</th><th>Side</th><th>Size</th><th>Entry</th><th>Exit</th><th>Reason</th><th>P&amp;L</th></tr></thead>
+          <tbody id="closedBody"></tbody></table></div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <h3>Bot control</h3>
+          <div class="row">
+            <button id="startBtn" class="primary">Start bot</button>
+            <button id="stopBtn">Stop</button>
+          </div>
+          <p class="muted" id="cadence" style="margin:10px 0 0">The bot analyses all markets every hour and acts when a 1h candle closes.</p>
+        </div>
+        <div class="panel">
+          <h3>Market analysis <span class="muted" id="scanAge"></span></h3>
+          <div class="tbl"><table><thead><tr><th>Market</th><th>Signal</th><th>Timeframe</th><th>Score</th></tr></thead>
+          <tbody id="candBody"></tbody></table></div>
+        </div>
+        <div class="panel">
+          <h3>Paper balance over time</h3>
+          <div id="eqchart"></div>
+        </div>
+        <div class="panel">
+          <h3>Activity log</h3>
+          <div class="log" id="log"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REPLAY -->
+  <section id="tab-replay" class="hidden">
+    <div class="panel">
+      <h3>Replay the bot on past data</h3>
+      <p class="muted" style="margin:0 0 10px">Runs the exact same rules over history with your paper balance: one shared account, max positions, fees, slippage, stop-losses. Takes 20–60 seconds.</p>
+      <div class="row">
+        <div class="seg" id="daysSeg">
+          <button data-d="30">30 days</button><button data-d="90" class="on">90 days</button><button data-d="180">180 days</button><button data-d="365">1 year</button>
+        </div>
+        <button id="replayBtn" class="primary">Run replay</button>
+        <span class="muted" id="replayMsg"></span>
+      </div>
+      <div class="progress hidden" id="replayProg"><i style="width:0%"></i></div>
+    </div>
+    <div id="replayOut" class="hidden">
+      <div class="cards" id="rCards"></div>
+      <div class="panel">
+        <h3>Balance during replay <span class="muted">dashed: start and target</span></h3>
+        <div id="reqchart"></div>
+      </div>
+      <div class="grid">
+        <div class="panel">
+          <h3><span id="rChartTitle">Click a trade to see it on the chart</span></h3>
+          <div class="legend">
+            <span><b style="background:#f59e0b"></b>EMA 20</span><span><b style="background:#a78bfa"></b>EMA 50</span>
+            <span><b style="background:#3b82f6"></b>Breakout channel</span><span>dashed = selected trade's entry / stop / target</span>
+          </div>
+          <div id="rchart"></div>
+        </div>
+        <div class="panel">
+          <h3>Trades <span class="muted" id="rTradeCount"></span></h3>
+          <div class="tbl" style="max-height:520px;overflow:auto"><table><thead><tr><th>Opened</th><th>Market</th><th>Side</th><th>Reason</th><th>P&amp;L</th></tr></thead>
+          <tbody id="rTrades"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="tab-settings" class="hidden">
+    <div class="panel">
+      <h3>Paper account</h3>
+      <div class="form">
+        <div><label>Starting balance (₹)</label><input id="sStart" type="number" min="500" step="100"></div>
+        <div><label>Target balance (₹)</label><input id="sTarget" type="number" min="500" step="100"></div>
+        <div><label>₹ per USD (Delta India accounts are in USD)</label><input id="sRate" type="number" step="0.1"></div>
+        <div><label>Survival agent rent (USD per month, 0 = none)</label><input id="sRent" type="number" min="0" step="10"></div>
+        <div><label>All-weather profile</label>
+          <select id="sProf">
+            <option value="balanced">Balanced: 50% carry / 50% trend</option>
+            <option value="conservative">Conservative: 70% carry / 30% trend</option>
+          </select></div>
+        <div><label>Instruments</label>
+          <select id="sInst">
+            <option value="perpetual">Perpetual futures only</option>
+            <option value="options,perpetual">Options on BTC/ETH, perpetuals for the rest</option>
+            <option value="options">Options only (BTC/ETH)</option>
+          </select></div>
+        <div><label>Mode</label>
+          <select id="sAgg">
+            <option value="normal">Normal: wait for tested setups, 1% risk</option>
+            <option value="target">Target mode: chase the target hard (3% risk, market entries, up to 10 trades)</option>
+          </select></div>
+        <div><label>Engine</label>
+          <select id="sEngine">
+            <option value="daytrader">Day Trader: scanner → Time Machine → risk check → you approve (ORB at US open)</option>
+            <option value="survival">Survival agent: pay for yourself or die (Claude Fable + ChatGPT + carry + trend)</option>
+            <option value="allweather">All-weather portfolio: carry + trend + AI risk committee (recommended)</option>
+            <option value="moonshot">Moonshot: all-in, max useful leverage, target only (paper)</option>
+            <option value="ai">AI duel: Claude Fable vs ChatGPT (free hand)</option>
+            <option value="plan">Strategy plan (from Plan &amp; analyse)</option>
+            <option value="arena">Bot arena: 5 bots, fire the losers</option>
+            <option value="single">Single bot</option>
+          </select></div>
+        <div><label>Timeframe (single bot)</label>
+          <select id="sTf">
+            <option value="auto">Auto: bot picks per coin (5m / 15m / 1h)</option>
+            <option value="15m/5m">Fast: 5-minute trades</option>
+            <option value="1h/15m">Medium: 15-minute trades</option>
+            <option value="4h/1h">Slow: 1-hour trades (best in backtests)</option>
+          </select></div>
+        <div><label>Session length (minutes, 0 = no limit)</label><input id="sMin" type="number" min="0" step="5"></div>
+        <div><label>Risk per trade</label>
+          <select id="sRisk">
+            <option value="0.005">0.5% (careful)</option>
+            <option value="0.01">1% (default)</option>
+            <option value="0.02">2% (aggressive)</option>
+          </select></div>
+      </div>
+      <p class="muted" style="margin:14px 0">Applying resets the paper account (clears paper trades and history) and stops the bot.</p>
+      <button id="applyBtn" class="danger">Apply &amp; reset paper account</button>
+    </div>
+  </section>
+</div>
+
+<div class="modal" id="modal">
+  <div class="box">
+    <h3 style="margin:0 0 6px">Connect your Delta Exchange account</h3>
+    <p class="muted" style="margin:0 0 6px">Create an API key in Delta → Account → API Keys. For this test, <b>read-only</b> permission is enough; the dashboard only reads your balance and never places real orders.</p>
+    <label>API key</label><input id="kKey" autocomplete="off">
+    <label>API secret</label><input id="kSecret" type="password" autocomplete="off">
+    <label>Region</label><select id="kRegion"><option value="india">Delta Exchange India</option><option value="global">Delta Exchange Global</option></select>
+    <label style="display:flex;gap:8px;align-items:center"><input id="kSave" type="checkbox" style="width:auto"> Save to .env on this computer</label>
+    <p class="muted" id="kMsg"></p>
+    <div class="row" style="justify-content:flex-end"><button id="kCancel">Cancel</button><button id="kGo" class="primary">Connect</button></div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const TZ = -new Date().getTimezoneOffset() * 60;           // show charts in your local time
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const inr = (x, sign = false) => x == null ? "–" : (sign && x > 0 ? "+" : "") + "₹" + Number(x).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+const px = (x) => x == null || x === "" ? "–" : Number(x).toPrecision(6).replace(/\.?0+$/, "");
+const pct = (x, sign = true) => x == null ? "–" : (sign && x > 0 ? "+" : "") + (x * 100).toFixed(1) + "%";
+const cls = (x) => (x > 0 ? "pos" : x < 0 ? "neg" : "");
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+  return r.json();
+}
+
+// ---------------------------------------------------------------- charts
+const chartOpts = (el) => ({
+  width: el.clientWidth, height: el.clientHeight,
+  layout: { background: { color: "transparent" }, textColor: "#8b95a7", fontSize: 11 },
+  grid: { vertLines: { color: "#1a202b" }, horzLines: { color: "#1a202b" } },
+  rightPriceScale: { borderColor: "#232a36" },
+  timeScale: { borderColor: "#232a36", timeVisible: true, secondsVisible: false },
+  crosshair: { mode: 0 },
+});
+function makePriceChart(el) {
+  const chart = LightweightCharts.createChart(el, chartOpts(el));
+  const c = {
+    chart,
+    candles: chart.addCandlestickSeries({ upColor: "#22c55e", downColor: "#ef4444", borderVisible: false, wickUpColor: "#22c55e", wickDownColor: "#ef4444" }),
+    emaF: chart.addLineSeries({ color: "#f59e0b", lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false }),
+    emaS: chart.addLineSeries({ color: "#a78bfa", lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false }),
+    dcH: chart.addLineSeries({ color: "rgba(59,130,246,.55)", lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false }),
+    dcL: chart.addLineSeries({ color: "rgba(59,130,246,.55)", lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false }),
+    lines: [],
+  };
+  new ResizeObserver(() => chart.applyOptions({ width: el.clientWidth })).observe(el);
+  return c;
+}
+function makeEqChart(el) {
+  const chart = LightweightCharts.createChart(el, chartOpts(el));
+  const s = chart.addAreaSeries({ lineColor: "#22c55e", topColor: "rgba(34,197,94,.25)", bottomColor: "rgba(34,197,94,0)", lineWidth: 2,
+    priceFormat: { type: "custom", formatter: (v) => "₹" + Math.round(v).toLocaleString("en-IN") } });
+  new ResizeObserver(() => chart.applyOptions({ width: el.clientWidth })).observe(el);
+  return { chart, s, lines: [] };
+}
+const sh = (arr) => arr.map((p) => ({ ...p, time: p.time + TZ }));
+function drawPrice(c, d, extraLines = [], fit = true) {
+  c.candles.setData(sh(d.candles));
+  c.emaF.setData(sh(d.ema_fast)); c.emaS.setData(sh(d.ema_slow));
+  c.dcH.setData(sh(d.dc_high)); c.dcL.setData(sh(d.dc_low));
+  c.candles.setMarkers(sh(d.markers));
+  c.lines.forEach((l) => c.candles.removePriceLine(l));
+  c.lines = [...d.lines, ...extraLines].map((l) => c.candles.createPriceLine({ price: l.price, color: l.color, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: l.title }));
+  if (fit) c.chart.timeScale().fitContent();
+}
+function drawEq(e, points, start, target) {
+  const data = []; let last = 0;
+  for (const [t, v] of points) { const tt = Math.floor(t) + TZ; if (tt > last) { data.push({ time: tt, value: v }); last = tt; } }
+  e.s.setData(data);
+  e.lines.forEach((l) => e.s.removePriceLine(l));
+  e.lines = [
+    e.s.createPriceLine({ price: start, color: "#8b95a7", lineWidth: 1, lineStyle: 2, title: "start" }),
+    e.s.createPriceLine({ price: target, color: "#f59e0b", lineWidth: 1, lineStyle: 2, title: "target" }),
+  ];
+  e.chart.timeScale().fitContent();
+}
+
+let liveChart, eqChart, rChart, rEqChart;
+let liveSymbol = null, lastState = null, selectedTrade = null, sessionEnd = 0;
+setInterval(() => {
+  if (!sessionEnd) return;
+  const left = Math.max(0, Math.round((sessionEnd - Date.now()) / 1000));
+  $("cTime").textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+}, 1000);
+
+// ---------------------------------------------------------------- live
+async function loadLiveChart(symbol, fit = true) {
+  liveSymbol = symbol;
+  const d = await api(`/api/chart?symbol=${encodeURIComponent(symbol)}&source=live`);
+  if (d.error) return;
+  $("chartTitle").textContent = symbol;
+  $("chartSub").textContent = `${d.tf} candles · live`;
+  drawPrice(liveChart, d, [], fit);
+}
+
+function render(s) {
+  lastState = s;
+  const c = s.conf;
+  $("cEq").textContent = inr(s.equity_inr);
+  $("cStart").textContent = `started with ${inr(c.start_inr)}`;
+  $("cPnl").textContent = inr(s.pnl_inr, true); $("cPnl").className = "v " + cls(s.pnl_inr);
+  $("cPnlPct").textContent = pct(s.pnl_pct);
+  $("cTarget").textContent = inr(c.target_inr);
+  $("cBar").style.width = Math.max(0, Math.min(100, s.progress * 100)) + "%";
+  const need = c.target_inr - s.equity_inr;
+  $("cNeed").textContent = need <= 0 ? "🎯 target reached" : `${inr(need)} to go · ${pct(Math.max(0, s.progress), false)} of the way`;
+  $("cTrades").textContent = s.stats.trades;
+  $("cWin").textContent = s.stats.win_rate == null ? "no trades yet" : `${pct(s.stats.win_rate, false)} winners`;
+  $("cOpen").textContent = s.open.length;
+  const openPnl = s.open.reduce((a, t) => a + (t.pnl_inr || 0), 0);
+  $("cOpenPnl").innerHTML = s.open.length ? `<span class="${cls(openPnl)}">${inr(openPnl, true)} unrealised</span>` : "flat";
+
+  // header pills
+  const bp = $("botPill");
+  if (s.bot.error) { bp.className = "pill err"; bp.innerHTML = `<span class="dot"></span>crashed`; }
+  else if (s.bot.running) { bp.className = "pill run"; bp.innerHTML = `<span class="dot"></span>bot running`; }
+  else { bp.className = "pill"; bp.innerHTML = `<span class="dot"></span>bot stopped`; }
+  $("startBtn").disabled = s.bot.running; $("stopBtn").disabled = !s.bot.running;
+  $("cadence").textContent = s.arena && s.arena.ai_duel
+    ? "AI duel: Claude Fable and ChatGPT each decide on their own schedule (30s-10min, their choice), pick coins, risk 0.5-8% and hold times from 15 seconds to 1 hour. Stops, targets and hold times are enforced every 5 seconds."
+    : s.arena
+    ? `${s.arena.bots.length} bots hunt in parallel on 1-, 3-, 5- and 15-minute charts across the 15 most liquid coins (plus Claude every ~6 min), entering with limit orders (0.02% fee instead of 0.05%). Everything is re-checked every minute: signals, fills, stops, targets, firing and the deadline.`
+    : s.bot.tf_mode === "auto"
+    ? "Auto timeframe: for every coin the bot checks 15m/5m, 1h/15m and 4h/1h charts and trades on whichever trend is cleanest. It re-checks every 5 minutes."
+    : `Picks markets on ${s.bot.regime_tf} candles, trades on ${s.bot.entry_tf} candles, acting right after each candle closes.`;
+  const ss = s.session;
+  if (ss.target_hit) { $("cTime").textContent = "🎯 done"; $("cTimeSub").textContent = "target reached, bot stopped trading"; }
+  else if (ss.ended) { $("cTime").textContent = "0:00"; $("cTimeSub").textContent = "session over, positions closed"; }
+  else if (ss.end && s.bot.running) {
+    const left = Math.max(0, ss.end - ss.now); sessionEnd = Date.now() + left * 1000;
+    $("cTimeSub").textContent = `stops at ${inr(c.target_inr)} or when time runs out`;
+  } else if (!s.bot.running) { $("cTime").textContent = (c.session_minutes ? c.session_minutes + ":00" : "∞"); $("cTimeSub").textContent = "press Start bot"; sessionEnd = 0; }
+  const cp = $("connPill");
+  if (s.connected.ok) { cp.className = "pill ok"; cp.textContent = `Delta ${s.connected.region} connected · real balance ${inr(s.connected.balance_inr)}`; }
+  else if (s.connected.error) { cp.className = "pill err"; cp.textContent = "Delta connection failed"; cp.title = s.connected.error; }
+  const hn = $("haltNote");
+  hn.style.cssText = ss.target_hit ? "background:#0b1f13;border-color:#14532d;color:#86efac" : "";
+  const haltMsg = s.bot.error ? "Bot error: " + s.bot.error : s.bot.halted;
+  hn.classList.toggle("hidden", !haltMsg); hn.textContent = haltMsg || "";
+
+  $("aggPill").classList.toggle("hidden", c.aggression !== "target");
+  renderPlan(s);
+  renderMoon(s);
+  renderAW(s);
+  renderSV(s);
+  renderDT(s);
+  // arena
+  const ar = s.arena;
+  $("arenaPanel").classList.toggle("hidden", !ar);
+  if (ar) {
+    const alive = ar.bots.filter((b) => b.alive).length;
+    $("arenaSub").textContent = `${alive}/${ar.bots.length} bots alive · review ${ar.reviews_done}/${ar.reviews}`;
+    $("arenaRules").textContent = `Each bot is hired with a share of the budget and must make +${(ar.goal_pct * 100).toFixed(0)}% on it. ` +
+      `A bot is fired if it loses ${(ar.death_loss * 100).toFixed(0)}% of its share, and at each of the ${ar.reviews} performance reviews ` +
+      `the worst losing bot is fired. A fired bot's budget goes to the survivors.`;
+    $("bots").innerHTML = ar.bots.map((b) => {
+      // gauge: fire line at left edge, 0 at 1/3, personal goal at right edge
+      const span = b.goal_inr - b.death_inr || 1;
+      const pos = Math.max(0, Math.min(1, (b.pnl_inr - b.death_inr) / span));
+      const zero = (-b.death_inr / span) * 100;
+      const left = Math.min(pos * 100, zero), width = Math.abs(pos * 100 - zero);
+      const status = !b.alive ? ["dead", "FIRED"] : b.promoted ? ["star", "GOAL HIT"] : ["alive", "WORKING"];
+      return `<div class="bot ${!b.alive ? "dead" : b.promoted ? "star" : ""}">
+        <div class="nm"><span>${esc(b.label)}</span><span class="st ${status[0]}">${status[1]}</span></div>
+        <div class="muted">${esc(b.style)} · ${esc(b.tf)}</div>
+        <div class="pl ${cls(b.pnl_inr)}">${inr(b.pnl_inr, true)}</div>
+        <div class="gauge"><span class="mid" style="left:${zero}%"></span><i style="left:${left}%;width:${Math.max(width, 0.8)}%;background:${b.pnl_inr >= 0 ? "var(--green)" : "var(--red)"}"></i></div>
+        <div class="meta"><span>fired at ${inr(b.death_inr)}</span><span>goal ${inr(b.goal_inr, true)}</span></div>
+        <div class="meta" style="margin-top:6px"><span>budget ${inr(b.budget_inr)}</span><span>${b.trades} trades · ${b.open} open${b.orders ? ` · ${b.orders} limit order waiting` : ""}</span></div>
+        ${!b.alive ? `<div class="meta" style="margin-top:6px"><span class="neg">${esc(b.died)}</span></div>` : `
+        <div class="now">${b.scan && b.scan.time
+          ? `<b>Now:</b> scanned ${b.scan.scanned} coins${b.scan.trending != null ? ` · ${b.scan.trending} trending` : ""} · ${new Date(b.scan.time * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
+          : "<b>Now:</b> starting first scan…"}</div>
+        ${(b.scan && b.scan.closest || []).map((x) => `<div class="near">${esc(x)}</div>`).join("")}
+        ${b.scan && b.scan.time && b.scan.trending === 0 ? `<div class="near">no coin is trending on its timeframe, so nothing to trade yet</div>` : ""}
+        ${(b.feed || []).slice().reverse().map(([t, x]) => `<div class="ev"><span>${new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span> ${esc(x)}</div>`).join("")}`}
+      </div>`;
+    }).join("");
+  }
+
+  // AI duel boxes
+  if (ar && ar.ai && ar.ai.length) {
+    $("claudeBox").innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px">` +
+      ar.ai.map((t) => {
+        const L = t.last || {};
+        const status = !t.available ? `<span class="neg">not available (${t.backend === "openai" ? "no OpenAI key" : "Claude Code CLI not found"})</span>`
+          : t.busy ? `<span class="pos">thinking…</span>` : `next look in ${t.next_in}s`;
+        let h = `<div class="ai"><h4>${esc(t.label)} <span class="muted">${esc(t.model)} · ${t.backend === "claude_code" ? "your Claude Code login" : "OpenAI API"} · ${t.calls} calls${t.tokens ? " · " + t.tokens.toLocaleString() + " tokens" : ""} · ${status}</span></h4>`;
+        if (L.error) h += `<p class="neg" style="margin:4px 0">${esc(L.error)}</p>`;
+        if (L.view) h += `<p style="margin:4px 0 6px">${esc(L.view)} <span class="muted">(${new Date(L.time * 1000).toLocaleTimeString()}, ${L.seconds}s, ${L.coins} coins)</span></p>`;
+        h += (L.actions || []).map((x) => `<div class="act"><span class="tag ${x.side === "buy" ? "long" : "short"}">${esc(x.action.toUpperCase())} ${esc(x.side.toUpperCase())}</span>
+          <b>${esc(x.symbol)}</b> <span class="muted">hold ${esc(x.hold)} · risk ${Number(x.risk_pct).toFixed(1)}% · SL ${px(x.stop_price)} · TP ${px(x.target_price)}</span><br>
+          <span class="muted">${esc(x.reason)}</span><br><span class="${String(x.verdict).startsWith("rejected") || String(x.verdict).startsWith("error") ? "neg" : "pos"}">→ ${esc(x.verdict)}</span></div>`).join("")
+          || (L.time && !L.error ? `<div class="act muted">No trade this round.</div>` : (!L.time ? `<div class="act muted">Waiting for the first decision (press Start bot).</div>` : ""));
+        return h + `</div>`;
+      }).join("") + `</div>`;
+  }
+  // Claude
+  const cl = ar && ar.claude;
+  if (cl) {
+    const L = cl.last || {};
+    const when = L.time ? new Date(L.time * 1000).toLocaleTimeString() : "";
+    const via = cl.backend === "claude_code"
+      ? `via Claude Code (your login, no API key) · ${cl.calls} calls · uses your Claude plan's limits (≈$${(cl.cost_usd || 0).toFixed(2)} at API prices)`
+      : `via Anthropic API · ${cl.calls} calls · API cost $${(cl.cost_usd || 0).toFixed(3)}`;
+    let html = `<div class="ai"><h4>Claude's analysis <span class="muted">${esc(cl.model)} · decides every ~${cl.interval_min} min · ${via}</span></h4>`;
+    if (!cl.available) {
+      html += `<p class="muted" style="margin:4px 0 8px">Claude needs an Anthropic API key (console.anthropic.com → API keys). It is used only to call Claude from this computer.</p>
+        <div class="row"><input id="aKey" type="password" placeholder="sk-ant-..." style="max-width:360px">
+        <label style="display:flex;gap:6px;align-items:center;margin:0"><input id="aSave" type="checkbox" style="width:auto"> save to .env</label>
+        <button id="aGo" class="primary">Hire Claude</button><span class="muted" id="aMsg"></span></div>`;
+    } else if (L.error) {
+      html += `<p class="neg" style="margin:4px 0">${esc(L.error)} <span class="muted">${when}</span></p>`;
+    } else if (L.time) {
+      html += `<p style="margin:4px 0 6px">${esc(L.view)} <span class="muted">(${when}, ${L.coins} coins, ${L.seconds}s)</span></p>`;
+      html += (L.actions || []).map((x) => `<div class="act"><span class="tag ${x.side === "buy" ? "long" : "short"}">${esc(x.action.toUpperCase())} ${esc(x.side.toUpperCase())}</span>
+        <b>${esc(x.symbol)}</b> <span class="muted">SL ${px(x.stop_price)} · TP ${px(x.target_price)} · conf ${Number(x.confidence).toFixed(2)}</span><br>
+        <span class="muted">${esc(x.reason)}</span><br><span class="${String(x.verdict).startsWith("rejected") ? "neg" : "pos"}">→ ${esc(x.verdict)}</span></div>`).join("")
+        || `<div class="act muted">No trade this round.</div>`;
+      if (L.thinking) html += `<details><summary>Claude's reasoning (summary)</summary><p>${esc(L.thinking)}</p></details>`;
+    } else {
+      html += `<p class="muted" style="margin:4px 0">Waiting for the first decision (after you press Start bot).</p>`;
+    }
+    const box = $("claudeBox");
+    if (!(cl.available === false && box.querySelector("#aKey"))) box.innerHTML = html + "</div>";
+    const go = $("aGo");
+    if (go && !go.dataset.bound) {
+      go.dataset.bound = 1;
+      go.onclick = async () => {
+        $("aMsg").textContent = "checking…";
+        const r = await api("/api/anthropic", { key: $("aKey").value, save: $("aSave").checked });
+        $("aMsg").textContent = r.ok ? "accepted" : "failed: " + r.error;
+        if (r.ok) { $("claudeBox").innerHTML = ""; poll(); }
+      };
+    }
+  }
+
+  // candidates
+  $("candBody").innerHTML = s.candidates.length ? s.candidates.map((x) =>
+    `<tr class="click ${x.symbol === liveSymbol ? "sel" : ""}" data-sym="${esc(x.symbol)}"><td>${esc(x.symbol)}</td>
+     <td><span class="tag ${x.direction > 0 ? "long" : "short"}">${x.agent ? (x.direction > 0 ? "BUY" : "SELL") : (x.direction > 0 ? "UP" : "DOWN")}</span>
+       ${x.agent ? `<span class="muted">${esc(x.agent)}</span>` : ""}</td>
+     <td class="muted">${esc(x.regime_tf)} → ${esc(x.entry_tf)}</td><td>${x.score.toFixed(2)}</td></tr>`).join("")
+    : `<tr><td colspan="4" class="empty">${s.bot.last_scan ? "No market is trending cleanly — bot stays flat (that's on purpose)." : "Start the bot to run the first analysis."}</td></tr>`;
+  $("scanAge").textContent = s.bot.last_scan ? `updated ${new Date(s.bot.last_scan * 1000).toLocaleTimeString()}` : "";
+
+  // open
+  $("openBody").innerHTML = s.open.length ? s.open.map((t) =>
+    `<tr class="click" data-sym="${esc(t.chart_symbol)}"><td>${esc(t.symbol)}</td><td>${esc(t.kind)} <span class="muted">${esc(t.entry_tf)}</span></td>
+     <td><span class="tag ${(t.view || t.side) === "buy" ? "long" : "short"}">${t.kind === "option" ? (t.view === "buy" ? "CALL" : "PUT") : t.side.toUpperCase()}</span></td>
+     <td>${t.size}</td><td>${px(t.entry_price)}</td><td>${px(t.mark)}</td><td>${px(t.stop)}</td><td>${px(t.target)}</td>
+     <td class="${cls(t.pnl_inr)}">${inr(t.pnl_inr, true)}</td></tr>`).join("")
+    : `<tr><td colspan="9" class="empty">No open positions</td></tr>`;
+
+  // closed
+  $("closedBody").innerHTML = s.closed.length ? s.closed.map((t) =>
+    `<tr class="click" data-sym="${esc(t.symbol)}"><td>${esc(t.exit_time)}</td><td>${esc(t.symbol)}</td>
+     <td><span class="tag ${t.side === "buy" ? "long" : "short"}">${esc(t.side).toUpperCase()}</span></td><td>${esc(t.size)}</td>
+     <td>${px(t.entry_price)}</td><td>${px(t.exit_price)}</td><td class="muted">${esc(t.reason)}</td>
+     <td class="${cls(t.pnl_inr)}">${inr(t.pnl_inr, true)}</td></tr>`).join("")
+    : `<tr><td colspan="8" class="empty">No trades booked yet</td></tr>`;
+
+  // log
+  const lg = $("log"); const atBottom = lg.scrollTop + lg.clientHeight >= lg.scrollHeight - 20;
+  lg.textContent = s.logs.join("\n") || "Nothing yet.";
+  if (atBottom) lg.scrollTop = lg.scrollHeight;
+
+  if (s.equity_hist.length) drawEq(eqChart, s.equity_hist, c.start_inr, c.target_inr);
+
+  if (!liveSymbol) loadLiveChart(s.open[0]?.chart_symbol || s.candidates[0]?.symbol || "BTCUSD");
+}
+
+document.addEventListener("click", (e) => {
+  const tr = e.target.closest("tr[data-sym]");
+  if (tr && tr.closest("#tab-live")) { loadLiveChart(tr.dataset.sym); window.scrollTo({ top: 0, behavior: "smooth" }); }
+});
+
+async function poll() {
+  try { render(await api("/api/state")); } catch (e) { console.error(e); }
+}
+let tick = 0;
+setInterval(() => { poll(); if (liveSymbol && ++tick % 6 === 0) loadLiveChart(liveSymbol, false); }, 5000);
+
+$("startBtn").onclick = async () => { $("startBtn").disabled = true; await api("/api/bot/start", {}); setTimeout(poll, 800); };
+// the plan panel's "Use this plan" re-loads a fresh plan; a stale plan blocks Start with a message
+$("stopBtn").onclick = async () => { $("stopBtn").disabled = true; await api("/api/bot/stop", {}); poll(); };
+
+// ---------------------------------------------------------------- strategy plan
+const fmtP = (p) => { const pc = p * 100; return pc === 0 ? "0%" : pc < 0.1 ? "<0.1%" : pc < 10 ? pc.toFixed(1) + "%" : Math.round(pc) + "%"; };
+function renderPlan(s) {
+  const pl = s.plan, pg = s.planning, c = s.conf, panel = $("planPanel");
+  const mon = s.arena && s.arena.plan_mode ? s.arena.monitor : null;
+  // header card: live chance > plan chance > nothing
+  if (mon && mon.live_chance != null && s.bot.running) {
+    $("cChance").textContent = fmtP(mon.live_chance);
+    $("cChance").className = "v " + (mon.live_chance >= 0.5 ? "pos" : mon.live_chance >= 0.1 ? "" : "neg");
+    $("cChanceSub").textContent = `live, re-checked every 5s · ${mon.pace || ""}`;
+  } else if (pl && !pl.stale) {
+    $("cChance").textContent = fmtP(pl.p_target);
+    $("cChance").className = "v " + (pl.p_target >= 0.5 ? "pos" : pl.p_target >= 0.1 ? "" : "neg");
+    $("cChanceSub").textContent = `plan: ${inr(pl.start_inr)} → ${inr(pl.target_inr)} in ${pl.minutes} min, ${Math.round(pl.recommended_risk * 100)}% risk/trade`;
+  } else {
+    $("cChance").textContent = "?"; $("cChance").className = "v";
+    $("cChanceSub").textContent = pl && pl.stale ? "settings changed: plan again" : "press Plan & analyse";
+  }
+  $("planBtn").disabled = pg.status === "running";
+  if (pg.status === "idle" && !pl) { panel.classList.add("hidden"); return; }
+  panel.classList.remove("hidden");
+  $("planProg").classList.toggle("hidden", pg.status !== "running");
+  $("planProg").firstElementChild.style.width = (pg.progress || 0) + "%";
+  if (pg.status === "running") { $("planSub").textContent = pg.msg; return; }
+  if (pg.status === "error") { $("planBody").innerHTML = `<p class="neg">${esc(pg.msg)}</p>`; return; }
+  if (!pl) return;
+  $("planSub").textContent = `tested ${pl.tested} strategy × timeframe × coin combinations · ${new Date(pl.time * 1000).toLocaleTimeString()} · ${pl.seconds}s`;
+  // live monitor
+  $("monitorStrip").innerHTML = mon && mon.time ? `<div class="note" style="background:#0b1f13;border-color:#14532d;color:#bbf7d0">
+     <b>Live monitor</b> · check #${mon.checks} · ${Math.max(0, Math.round(Date.now() / 1000 - mon.time))}s ago ·
+     balance ${inr(mon.equity * c.inr_rate)}${mon.expected_now ? ` (on-pace would be ${inr(mon.expected_now * c.inr_rate)}, <b>${esc(mon.pace)}</b>)` : ""}
+     ${mon.live_chance != null ? ` · live chance <b>${fmtP(mon.live_chance)}</b>` : ""}
+     ${mon.backups_left != null ? ` · ${mon.backups_left} backup strategies ready` : ""}</div>` : "";
+  const box = (v, l, cl = "") => `<div><b class="${cl}">${v}</b><span>${l}</span></div>`;
+  const rec = pl.risk_table.find((r) => r.risk === pl.recommended_risk) || pl.risk_table[0];
+  let h = pl.stale ? `<p class="neg" style="margin:0 0 8px">Your settings changed since this plan. Press Plan &amp; analyse again.</p>` : "";
+  h += `<div class="ana-grid">
+    ${box(fmtP(pl.p_target), `chance of ${inr(pl.target_inr)} on unseen days`, pl.p_target >= 0.5 ? "pos" : "neg")}
+    ${box(fmtP(pl.p_target_optimistic), "chance if the past repeated exactly (optimistic)")}
+    ${box("+" + (pl.required_pct * 100).toFixed(1) + "%", `needed in ${pl.minutes} min`)}
+    ${box(Math.round(pl.recommended_risk * 100) + "%", "risk per trade chosen")}
+    ${box(fmtP(rec.p_loss), "chance of ending in a loss")}
+    ${box(`${inr(rec.p5)} – ${inr(rec.p95)}`, "90% range of end balance")}
+  </div>`;
+  h += `<p style="margin:4px 0 6px"><b>What is realistic with this plan</b> <span class="muted">(chance on unseen days)</span>: ` +
+    pl.achievable.map((a) => `<span class="tag ${a.p >= 0.5 ? "long" : "short"}" style="margin-right:4px">+${(a.gain * 100).toFixed(1)}% → ${inr(a.target_inr)}: ${fmtP(a.p)}</span>`).join("") + `</p>`;
+  h += `<h3 style="margin-top:12px">Strategies the plan will run</h3><div class="tbl"><table><thead><tr><th>Strategy</th><th>Older data (picked on)</th><th>Unseen days (tested on)</th><th>Trades/hour</th></tr></thead><tbody>` +
+    pl.active.map((x) => `<tr><td>${esc(x.label)}</td><td>${x.sel_n} trades · <span class="${cls(x.sel_avg)}">${(x.sel_avg * 100).toFixed(2)}%</span> avg · ${Math.round(x.sel_win * 100)}% win</td>
+      <td>${x.oos_n} trades · <span class="${cls(x.oos_avg)}">${(x.oos_avg * 100).toFixed(2)}%</span> avg</td><td>${x.rate_oos.toFixed(2)}</td></tr>`).join("") + `</tbody></table></div>`;
+  h += `<h3 style="margin-top:12px">Risk choices <span class="muted">(bigger bets raise the chance AND the losses)</span></h3><div class="tbl"><table><thead><tr><th>Risk/trade</th><th>Chance (unseen)</th><th>Chance (optimistic)</th><th>Loss chance</th><th>Lose 30%+</th><th>Median end</th></tr></thead><tbody>` +
+    pl.risk_table.map((r) => `<tr${r.risk === pl.recommended_risk ? ' class="sel"' : ""}><td>${Math.round(r.risk * 100)}%${r.risk === pl.recommended_risk ? " ✓" : ""}</td><td>${fmtP(r.p_target)}</td><td class="muted">${fmtP(r.p_target_selection)}</td>
+      <td>${fmtP(r.p_loss)}</td><td>${fmtP(r.p_big_loss)}</td><td>${inr(r.median)}</td></tr>`).join("") + `</tbody></table></div>`;
+  h += `<p class="muted" style="margin:8px 0">Backup strategies (take over when an active one loses 20% of its share, loses 3 trades in a row, or is worst at a review; re-planning starts when they run out): ${pl.backups.map((b) => esc(b.label)).join(", ") || "none"}</p>`;
+  h += pl.in_use ? `<p class="pos" style="margin:6px 0">This plan is loaded. Press <b>Start bot</b> to run it.</p>`
+                 : `<button id="usePlanBtn" class="primary">Use this plan</button> <span class="muted">switches the arena to these strategies (paper only), then press Start bot</span>`;
+  h += `<p class="muted" style="margin:10px 0 0">How: each combination was replayed on recent real Delta candles with fees and slippage. The plan was picked using only the older ~70% of the data; the headline chance comes from the newest ~30%, which the plan never saw. Claude AI also runs alongside the plan but has no history, so it is not in the numbers.</p>`;
+  $("planBody").innerHTML = h;
+  const u = $("usePlanBtn");
+  if (u) u.onclick = async () => { u.disabled = true; await api("/api/plan/use", {}); liveSymbol = null; poll(); };
+}
+$("planBtn").onclick = async () => { $("planBtn").disabled = true; await api("/api/plan", {}); poll(); };
+
+// ---------------------------------------------------------------- day trader
+function renderDT(s) {
+  const c = s.conf, panel = $("dtPanel"), v = s.daytrader;
+  if (c.engine !== "daytrader" || !v) { panel.classList.add("hidden"); return; }
+  panel.classList.remove("hidden");
+  const tm = (x) => new Date(x * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const now = Date.now() / 1000;
+  const phase = now < v.session_open ? `opens at ${tm(v.session_open)}` : now < v.or_end ? `building the opening range until ${tm(v.or_end)}`
+    : now < v.window_end ? `scanning for breakouts until ${tm(v.window_end)}` : now < v.flat_by ? `managing trades, flat by ${tm(v.flat_by)}` : "session over";
+  let h = `<p style="margin:0 0 8px">Session (US open, crypto): <b>${phase}</b> · opening range ${v.cfg.or_minutes} min · target ${v.cfg.target_r}R · max loss ${(v.cfg.max_loss_pct * 100).toFixed(1)}% per trade
+    <button id="dtScan" style="margin-left:8px;padding:4px 10px;font-size:12px">Scan now</button></p>`;
+  h += (v.tickets.length ? v.tickets.map((t) => {
+    const T = t.tm, H = T.history;
+    const tag = t.status === "awaiting approval" ? (t.risk_pass ? "warn" : "neg") : t.status.startsWith("closed") ? (t.pnl > 0 ? "pos" : "neg") : "muted";
+    return `<div class="panel" style="margin:8px 0;padding:10px 12px">
+      <h3 style="margin:0 0 6px"><span class="tag ${t.side === "buy" ? "long" : "short"}">${t.side === "buy" ? "LONG" : "SHORT"}</span> ${esc(t.symbol)}
+        <span class="muted">triggered ${tm(t.trigger_time)}</span> <span class="${tag}">${esc(t.status)}${t.pnl != null ? " · P&L " + inr(t.pnl * c.inr_rate, true) : ""}</span></h3>
+      <div class="ana-grid">
+        <div><b>${px(t.entry)}</b><span>entry (range ${px(t.or_low)} - ${px(t.or_high)})</span></div>
+        <div><b class="neg">${px(t.stop)}</b><span>stop (range midpoint)</span></div>
+        <div><b class="pos">${px(t.target)}</b><span>target ${v.cfg.target_r}R</span></div>
+        <div><b>${(T.target_first * 100).toFixed(1)}% / ${(T.stop_first * 100).toFixed(1)}%</b><span>Time Machine: target / stop first (${T.replays.toLocaleString()} replays)</span></div>
+        <div><b class="${cls(T.avg_r)}">${T.avg_r >= 0 ? "+" : ""}${T.avg_r.toFixed(2)}R</b><span>avg after costs (costs ${T.cost_r.toFixed(2)}R)</span></div>
+        <div><b>${H.targets}/${H.fired}</b><span>real history: hit target (${H.stops} stops), avg ${H.avg_r >= 0 ? "+" : ""}${H.avg_r.toFixed(2)}R</span></div>
+      </div>
+      ${t.warning ? `<p class="neg" style="margin:2px 0 6px">⚠ ${esc(t.warning)}</p>` : ""}
+      <p style="margin:2px 0 6px"><b>Verdict: ${esc(T.verdict)}</b> · size ${t.size} contracts · loss at stop ${inr(t.loss_at_stop * c.inr_rate)} · flat by ${tm(t.flat_by)}</p>
+      <div class="muted" style="font-size:12px">Risk check: ${t.checks.map((k) => `<span class="${k.ok ? "pos" : "neg"}">${k.ok ? "✓" : "✗"} ${esc(k.check)}</span> <span title="${esc(k.why)}">(${esc(k.why)})</span>`).join(" · ")}</div>
+      ${t.status === "awaiting approval" ? `<div class="row" style="margin-top:8px">${t.risk_pass ? `<button class="primary" data-dt="approve" data-id="${t.id}">Approve (paper)</button>` : `<span class="neg">BLOCKED by the risk check</span>`}
+        <button data-dt="reject" data-id="${t.id}">Reject</button></div>` : ""}
+    </div>`;
+  }).join("") : `<p class="muted">No setups yet today. The scanner checks the ${v.cfg.coins} most liquid coins every minute during the entry window.</p>`);
+  h += `<div class="log" style="height:140px;margin-top:8px">${v.log.slice().reverse().map(([t, x]) => `${new Date(t * 1000).toLocaleTimeString()}  ${esc(x)}`).join("\n") || "Nothing yet."}</div>`;
+  $("dtBody").innerHTML = h;
+  $("dtScan").onclick = () => api("/api/dt/scan", {});
+  document.querySelectorAll("[data-dt]").forEach((b) => b.onclick = async () => {
+    b.disabled = true;
+    const r = await api(`/api/dt/${b.dataset.dt}`, { id: b.dataset.id });
+    if (r && r.ok === false) alert(r.error);
+    poll();
+  });
+}
+
+// ---------------------------------------------------------------- survival agent
+function renderSV(s) {
+  const c = s.conf, panel = $("svPanel"), v = s.survival;
+  if (c.engine !== "survival" || !v) { panel.classList.add("hidden"); return; }
+  panel.classList.remove("hidden");
+  const r = c.inr_rate, usd = (x) => (x < 0 ? "-$" : "$") + Math.abs(x).toFixed(2);
+  const pnl = v.equity - v.start, age = Math.max(0, Date.now() / 1000 - v.born);
+  const dur = age > 86400 ? `${(age / 86400).toFixed(1)} days` : `${Math.floor(age / 3600)}h ${Math.floor((age % 3600) / 60)}m`;
+  const status = !v.alive ? `<b class="dead">● DEAD</b>` : v.survival_mode ? `<b class="warn">● SURVIVAL MODE</b>` : `<b class="alive">● ALIVE</b>`;
+  let h = `<div class="hd"><b>SURVIVAL AGENT</b> ${status} <span>pays ${usd(v.rent_per_day * 30)}/month rent · dies at $0 · paper</span></div>
+    <div class="big">
+      <div><b>${usd(v.equity)}</b><span>balance (${inr(v.equity * r)})</span></div>
+      <div><b class="${cls(pnl)}">${pnl >= 0 ? "+" : ""}${usd(pnl)}</b><span>${((pnl / v.start) * 100).toFixed(1)}% since birth</span></div>
+      <div><b class="neg">${usd(-v.rent)}</b><span>rent paid</span></div>
+      <div><b>${dur}</b><span>alive for</span></div>
+      <div><b>${v.trades}</b><span>AI desk trades</span></div>
+      <div><b>${v.win_rate == null ? "-" : Math.round(v.win_rate * 100) + "%"}</b><span>AI desk win rate</span></div>
+    </div>`;
+  if (!v.alive) h += `<div class="note" style="background:#1f0c0c;border-color:#5b1a1a;color:#fca5a5">THE AGENT DIED: ${esc(v.died)}</div>`;
+  h += `<div class="desks">` + Object.entries(v.desks).map(([k, d]) => {
+    const st = !d.alive ? `<span class="dead">${d.died ? "SHUT" : "OFF"}</span>` : d.busy ? `<span class="warn">THINKING</span>` : `<span class="alive">LIVE</span>`;
+    const extra = d.read !== undefined
+      ? `<div class="r">${d.error ? `<span class="neg">${esc(d.error)}</span>` : esc(d.read || "waiting for first look")}</div>` +
+        (d.decisions || []).slice(0, 3).map((x) => `<div class="r">→ ${esc((x.side || "").toUpperCase())} ${esc(x.symbol)}: <span class="${String(x.verdict).startsWith("BOUGHT") || String(x.verdict).startsWith("SOLD") ? "pos" : "muted"}">${esc(x.verdict)}</span></div>`).join("") +
+        `<div class="r">${d.calls} looks · ${d.trades || 0} trades${d.trades ? " · " + d.wins + " won" : ""}${d.alive && !d.busy ? " · next look in " + d.next_in + "s" : ""}</div>`
+      : `<div class="r">${esc(d.detail || "")}</div>`;
+    return `<div class="desk ${d.alive ? "" : "off"}"><div class="t"><span>${esc(d.label)}</span>${st}</div><div class="w">${esc(d.who)}</div>
+      <div class="p ${cls(d.pnl)}">${d.pnl >= 0 ? "+" : ""}${usd(d.pnl)}</div>${extra}</div>`;
+  }).join("") + `</div>`;
+  h += `<div class="log">` + v.events.slice().reverse().map(([t, k, x]) => `${new Date(t * 1000).toLocaleTimeString()}  ${esc(x)}`).join("\n") + `</div>`;
+  $("svBody").innerHTML = h;
+}
+
+// ---------------------------------------------------------------- all-weather
+let awChart = null, awSeries = null;
+function renderAW(s) {
+  const c = s.conf, panel = $("awPanel"), v = s.allweather;
+  if (c.engine !== "allweather" || !v) { panel.classList.add("hidden"); return; }
+  panel.classList.remove("hidden");
+  const bt = v.backtest, pct = (x) => (x > 0 ? "+" : "") + (x * 100).toFixed(1) + "%";
+  $("awSub").textContent = `${v.profile} profile · paper model portfolio · rebalances daily 00:05 UTC`;
+  const r = c.inr_rate, gain = v.equity - v.start;
+  $("awTop").innerHTML = `<div class="ana-grid">
+    <div><b class="${cls(gain)}">${inr(v.equity * r)}</b><span>portfolio value (${pct(gain / v.start)})</span></div>
+    <div><b class="pos">${inr(v.fund_carry * r, true)}</b><span>funding earned by carry</span></div>
+    <div><b class="${cls(v.fund_trend)}">${inr(v.fund_trend * r, true)}</b><span>funding on trend positions</span></div>
+    <div><b class="neg">${inr(-v.fees * r)}</b><span>fees paid</span></div>
+    <div><b>${v.next_rebalance ? new Date(v.next_rebalance * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "at start"}</b><span>next rebalance</span></div>
+    <div><b>${v.braked ? "ON" : "off"}</b><span>drawdown brake (halves trend below -20%)</span></div></div>`;
+  if (bt) {
+    const p = bt.portfolio, b = bt.btc_hold, g = bt.regimes.portfolio, gb = bt.regimes.btc_hold;
+    $("awBt").innerHTML = `<div class="tbl"><table><thead><tr><th>${esc(bt.period)}</th><th>Portfolio</th><th>Hold BTC</th></tr></thead><tbody>
+      <tr><td>Return per year</td><td class="pos">${pct(p.cagr)}</td><td>${pct(b.cagr)}</td></tr>
+      <tr><td>Worst drop</td><td>${pct(p.max_dd)}</td><td class="neg">${pct(b.max_dd)}</td></tr>
+      <tr><td>Sharpe (risk-adjusted)</td><td>${p.sharpe.toFixed(2)}</td><td>${b.sharpe.toFixed(2)}</td></tr>
+      <tr><td>Worst month</td><td>${pct(p.worst_month)}</td><td>${pct(b.worst_month)}</td></tr>
+      ${Object.entries(bt.years).map(([y, x]) => `<tr><td>${y}</td><td class="${cls(x.portfolio)}">${pct(x.portfolio)}</td><td class="${cls(x.btc_hold)}">${pct(x.btc_hold)}</td></tr>`).join("")}
+      ${["bull", "sideways", "bear"].map((k) => `<tr><td>${k} months (${g[k].months})</td><td class="${cls(g[k].avg)}">${pct(g[k].avg)} avg · ${Math.round(g[k].positive * 100)}% up</td><td class="${cls(gb[k].avg)}">${pct(gb[k].avg)} · ${Math.round(gb[k].positive * 100)}% up</td></tr>`).join("")}
+      </tbody></table></div>`;
+    if (!awChart) {
+      awChart = LightweightCharts.createChart($("awChart"), { ...chartOpts($("awChart")), height: 260 });
+      awSeries = [awChart.addLineSeries({ color: "#22c55e", lineWidth: 2, priceLineVisible: false }),
+                  awChart.addLineSeries({ color: "#8b95a7", lineWidth: 1, priceLineVisible: false })];
+      new ResizeObserver(() => awChart.applyOptions({ width: $("awChart").clientWidth })).observe($("awChart"));
+      awChart.priceScale("right").applyOptions({ mode: 1 });
+    }
+    const st = c.start_inr;
+    awSeries[0].setData(bt.curve.map(([t, a]) => ({ time: t, value: a * st })));
+    awSeries[1].setData(bt.curve.map(([t, , b2]) => ({ time: t, value: b2 * st })));
+  } else {
+    $("awBt").innerHTML = `<p class="muted">Backtest is being prepared...</p>`;
+  }
+  const com = v.committee || {};
+  const vote = (name, x) => x ? `<div class="act"><b>${name}</b> · trend scale ${Number(x.risk_scale).toFixed(2)} · carry ${x.carry_ok ? "ok" : "OFF"}<br><span class="muted">${esc(x.reason)}</span>
+      ${(x.headlines || []).length ? `<ul style="margin:4px 0 0 16px;padding:0;color:var(--muted);font-size:12px">${x.headlines.slice(0, 6).map((h) => `<li>${esc(h)}</li>`).join("")}</ul>` : ""}</div>` : "";
+  let h = `<div class="grid" style="margin-top:12px"><div>
+    <h3>Trend book <span class="muted">(target positions, long + / short -)</span></h3><div class="tbl"><table><thead><tr><th>Coin</th><th>Weight</th><th>Position</th></tr></thead><tbody>` +
+    (Object.entries(v.targets).sort((a, b2) => Math.abs(b2[1].value) - Math.abs(a[1].value)).map(([k, x]) =>
+      `<tr><td>${esc(k)}</td><td class="${cls(x.weight)}">${(x.weight * 100).toFixed(1)}%</td><td class="${cls(x.value)}">${inr(x.value * r, true)}</td></tr>`).join("") ||
+      `<tr><td colspan="3" class="empty">Builds at the first rebalance (press Start bot)</td></tr>`) + `</tbody></table></div>
+    <h3 style="margin-top:12px">Carry <span class="muted">(long spot + short perpetual, earns funding)</span></h3><div class="tbl"><table><thead><tr><th>Coin</th><th>Status</th><th>Funding 7d avg</th><th>Hedged size</th></tr></thead><tbody>` +
+    (Object.entries(v.carry).map(([k, x]) => `<tr><td>${esc(k)}</td><td class="${x.on ? "pos" : "muted"}">${x.on ? "ON" : "off"}</td><td>${x.funding_7d_pct.toFixed(4)}% / 8h</td><td>${inr(x.notional * r)}</td></tr>`).join("") ||
+      `<tr><td colspan="4" class="empty">-</td></tr>`) + `</tbody></table></div></div><div>
+    <div class="ai"><h4>AI risk committee <span class="muted">Claude Fable (searches the web) + ChatGPT · can only reduce risk · daily</span></h4>
+    ${v.committee_busy ? `<p class="pos" style="margin:4px 0">meeting now: Claude is reading today's news…</p>` : ""}
+    ${com.time ? `<p style="margin:4px 0">Decision ${new Date(com.time * 1000).toLocaleString()}: <b>trend scale ${Number(com.risk_scale).toFixed(2)}</b>, carry <b>${com.carry_ok ? "allowed" : "OFF"}</b></p>` : ""}
+    ${vote("Claude Fable", com.claude)}${vote("ChatGPT", com.gpt)}
+    ${(com.errors || []).map((e) => `<p class="neg" style="margin:4px 0">${esc(e)}</p>`).join("")}</div>
+    <p class="muted" style="margin:10px 0 0">Real-money note: copying this exactly with Delta's minimum contract sizes needs about ${inr(v.min_capital_usd * r)}. Below that, small positions get rounded or skipped. This dashboard runs it as a paper model portfolio with exact sizes. The backtest assumes the carry hedge is perfect; real spot/perp price gaps and exchange risk are not modelled.</p>
+    </div></div>`;
+  $("awLive").innerHTML = h;
+}
+
+// ---------------------------------------------------------------- moonshot
+function renderMoon(s) {
+  const c = s.conf, panel = $("moonPanel");
+  if (c.engine !== "moonshot") { panel.classList.add("hidden"); return; }
+  panel.classList.remove("hidden");
+  const a = s.moon_analysis, m = s.moonshot || {}, pg = s.planning;
+  $("moonProg").classList.toggle("hidden", pg.status !== "running");
+  $("moonProg").firstElementChild.style.width = (pg.progress || 0) + "%";
+  $("moonSub").textContent = pg.status === "running" ? pg.msg : "all-in on every trade · paper only";
+  const b = a && !a.stale ? a.best : null;
+  if (b) {
+    $("cChance").textContent = fmtP(b.p_target); $("cChance").className = "v neg";
+    $("cChanceSub").textContent = `moonshot: ${fmtP(b.p_bust)} chance of being liquidated`;
+  }
+  let h = `<div class="row" style="margin-bottom:10px"><button id="moonBtn" class="primary">Analyse odds</button>
+    <span class="muted">replays the all-in strategy on 5 days of real 1-minute Delta data at every leverage (5x-200x) and picks the best chance</span></div>`;
+  if (a && a.stale) h += `<p class="neg">Settings changed since the last analysis - press Analyse odds again.</p>`;
+  if (b) {
+    h += `<div class="ana-grid">
+      <div><b class="neg">${fmtP(b.p_target)}</b><span>chance to reach ${inr(a.target)} (×${a.multiple.toFixed(1)})</span></div>
+      <div><b class="neg">${fmtP(b.p_bust)}</b><span>chance the account is liquidated</span></div>
+      <div><b>${b.leverage}x</b><span>leverage chosen (max is not best: fees)</span></div>
+      <div><b>+${Math.round(b.step * 100)}%</b><span>balance gain per winning trade</span></div>
+      <div><b>${b.liq_move_pct.toFixed(2)}%</b><span>price move against you = liquidation</span></div>
+      <div><b>${b.fees_pct_of_balance.toFixed(1)}%</b><span>of balance paid in fees per trade</span></div></div>`;
+    h += `<div class="tbl"><table><thead><tr><th>Leverage</th><th>Per win</th><th>Liquidated</th><th>Fees/balance</th><th>Chance of target</th><th>Chance of bust</th></tr></thead><tbody>` +
+      a.table.slice(0, 8).map((r) => `<tr${r === a.table[0] ? ' class="sel"' : ""}><td>${r.leverage}x</td><td>+${Math.round(r.step * 100)}%</td><td>${Math.round(r.liquidated * 100)}%</td>
+        <td>${r.fees_pct_of_balance.toFixed(1)}%</td><td>${fmtP(r.p_target)}</td><td>${fmtP(r.p_bust)}</td></tr>`).join("") + `</tbody></table></div>`;
+  } else if (!a) h += `<p class="muted">Press Analyse odds before starting.</p>`;
+  if (m.busted) h += `<div class="note" style="margin-top:10px">LIQUIDATED: the balance is gone. This is the usual outcome of Moonshot mode.</div>`;
+  (m.positions || []).forEach((p) => {
+    const long = p.side === "buy", dist = Math.abs(p.mark / p.liq - 1) * 100;
+    h += `<div class="note" style="margin-top:10px;background:#12111d;border-color:#3b2f6b;color:#e9d5ff">
+      <b>${long ? "LONG" : "SHORT"} ${esc(p.sym)}</b> · ${m.leverage}x all-in · entry ${px(p.entry)} · now ${px(p.mark)} ·
+      <span class="neg">liquidation ${px(p.liq)} (${dist.toFixed(2)}% away)</span> · <span class="pos">target ${px(p.target)}</span></div>`;
+  });
+  if ((m.trades || []).length) h += `<p class="muted" style="margin:10px 0 4px">Moonshot trades: ${m.wins} wins</p>` +
+    m.trades.slice().reverse().map((t) => `<div class="ev">${new Date(t.time * 1000).toLocaleTimeString()} · ${esc(t.sym)} ${esc(t.side)} · ${esc(t.reason)} · P&L ${(t.pnl * c.inr_rate).toFixed(0)} ₹ · balance ${inr(t.equity_after * c.inr_rate)}</div>`).join("");
+  $("moonBody").innerHTML = h;
+  $("moonBtn").onclick = async () => { $("moonBtn").disabled = true; await api("/api/moonshot/analyse", {}); poll(); };
+}
+
+// ---------------------------------------------------------------- target analysis
+function renderAnalysis(a, c) {
+  const p = $("anaPanel");
+  if (!a || a.status === "idle") {
+    $("cChance").textContent = "?"; $("cChance").className = "v";
+    $("cChanceSub").textContent = `press Analyse (${c.aggression === "target" ? "target" : "normal"} mode, ${c.session_minutes} min)`;
+    p.classList.add("hidden"); return;
+  }
+  p.classList.remove("hidden");
+  $("analyseBtn").disabled = a.status === "running";
+  $("anaProg").classList.toggle("hidden", a.status !== "running");
+  $("anaProg").firstElementChild.style.width = (a.progress || 0) + "%";
+  if (a.status === "running") { $("cChance").textContent = "…"; $("cChanceSub").textContent = a.msg; $("anaSub").textContent = a.msg; $("anaBody").innerHTML = ""; return; }
+  if (a.status === "error") { $("cChance").textContent = "!"; $("cChanceSub").textContent = "analysis failed"; $("anaBody").innerHTML = `<p class="neg">${esc(a.msg)}</p>`; return; }
+  const r = a.result, pc = r.p_target * 100;
+  const pct = pc === 0 ? "<0.01%" : pc < 0.1 ? pc.toFixed(2) + "%" : pc < 10 ? pc.toFixed(1) + "%" : Math.round(pc) + "%";
+  $("cChance").textContent = pct;
+  $("cChance").className = "v " + (r.p_target >= 0.5 ? "pos" : r.p_target >= 0.1 ? "" : "neg");
+  $("cChanceSub").textContent = `${inr(r.start_inr)} → ${inr(r.target_inr)} (+${(r.required_pct * 100).toFixed(1)}%) in ${r.minutes} min`;
+  $("anaSub").textContent = `${r.mode} mode · analysed ${new Date(r.time * 1000).toLocaleTimeString()} · took ${r.seconds}s`;
+  const stale = r.start_inr !== c.start_inr || r.target_inr !== c.target_inr || r.minutes !== c.session_minutes || r.mode !== (c.aggression || "normal");
+  const box = (v, l, cl = "") => `<div><b class="${cl}">${v}</b><span>${l}</span></div>`;
+  let html = stale ? `<p class="neg" style="margin:0 0 8px">Settings changed since this analysis - press Analyse again.</p>` : "";
+  html += `<div class="ana-grid">
+    ${box(pct, "chance of reaching the target", r.p_target >= 0.5 ? "pos" : "neg")}
+    ${box(Math.round(r.p_profit * 100) + "%", "chance of ending in profit")}
+    ${box(Math.round(r.p_loss * 100) + "%", "chance of ending in loss")}
+    ${box(inr(r.median), "most likely end balance")}
+    ${box(`${inr(r.p5)} – ${inr(r.p95)}`, "90% of sessions end in this range")}
+    ${box(r.expected_trades.toFixed(1), "trades expected in the session")}
+  </div>`;
+  html += `<div class="tbl"><table><thead><tr><th>Bot</th><th>Trades measured</th><th>Trades / hour</th><th>Win rate</th><th>Avg per trade</th></tr></thead><tbody>` +
+    r.agents.map((x) => `<tr><td>${esc(x.label)}</td><td>${x.trades_measured} <span class="muted">(${x.days}d)</span></td><td>${x.rate.toFixed(2)}</td>
+      <td>${Math.round(x.win * 100)}%</td><td class="${cls(x.avg)}">${(x.avg * 100).toFixed(3)}% of balance</td></tr>`).join("") + `</tbody></table></div>`;
+  html += `<p class="muted" style="margin:10px 0 0">How: the ${r.mode}-mode rule bots were replayed on the last 5-14 days of real Delta candles (fees and slippage included), then 20,000 sessions of ${r.minutes} minutes were simulated from those real trade results. Claude AI is not included (it has no trading history to replay). For comparison, the funding harvester (~6.5%/year in its backtest) would need about ${Math.round(r.funding_days)} days to reach ${inr(r.target_inr)}. Past weeks may not look like the next session.</p>`;
+  $("anaBody").innerHTML = html;
+}
+
+
+// ---------------------------------------------------------------- tabs
+document.querySelectorAll(".tab").forEach((b) => b.onclick = () => {
+  document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === b));
+  ["live", "replay", "settings"].forEach((t) => $("tab-" + t).classList.toggle("hidden", t !== b.dataset.tab));
+  if (b.dataset.tab === "settings" && lastState) fillSettings(lastState.conf);
+});
+
+// ---------------------------------------------------------------- replay
+let replayDays = 90, replayData = null;
+document.querySelectorAll("#daysSeg button").forEach((b) => b.onclick = () => {
+  document.querySelectorAll("#daysSeg button").forEach((x) => x.classList.toggle("on", x === b)); replayDays = +b.dataset.d;
+});
+$("replayBtn").onclick = async () => {
+  $("replayBtn").disabled = true; $("replayProg").classList.remove("hidden");
+  await api("/api/replay", { days: replayDays });
+  const iv = setInterval(async () => {
+    const r = await api("/api/replay");
+    $("replayMsg").textContent = r.msg || ""; $("replayProg").firstElementChild.style.width = (r.progress || 0) + "%";
+    if (r.status === "done" || r.status === "error") {
+      clearInterval(iv); $("replayBtn").disabled = false; $("replayProg").classList.add("hidden");
+      if (r.status === "done") showReplay(r.result); else $("replayMsg").textContent = "Error: " + r.msg;
+    }
+  }, 1000);
+};
+function showReplay(r) {
+  replayData = r;
+  $("replayOut").classList.remove("hidden");
+  if (!rChart) { rChart = makePriceChart($("rchart")); rEqChart = makeEqChart($("reqchart")); }
+  const ret = r.end_inr / r.start_inr - 1;
+  const card = (k, v, s, c = "") => `<div class="card"><div class="k">${k}</div><div class="v ${c}">${v}</div><div class="s">${s}</div></div>`;
+  $("rCards").innerHTML =
+    card("Start → end", inr(r.end_inr), `from ${inr(r.start_inr)} over ${r.days} days`) +
+    card("Profit / loss", inr(r.end_inr - r.start_inr, true), pct(ret), cls(ret)) +
+    card("Target " + inr(r.target_inr), r.target_hit ? "Reached" : "Not reached",
+         r.target_hit ? "on " + new Date(r.target_hit * 1000).toLocaleDateString() : `best balance was ${inr(r.best_inr)}`, r.target_hit ? "pos" : "neg") +
+    card("Worst drop", pct(r.max_dd), `lowest balance ${inr(r.worst_inr)}`, "neg") +
+    card("Trades", r.trades.length, `${pct(r.win_rate, false)} winners` + (r.skipped_small ? ` · ${r.skipped_small} signals too small for account` : ""));
+  drawEq(rEqChart, r.curve, r.start_inr, r.target_inr);
+  $("rTradeCount").textContent = `${r.trades.length} trades on ${r.symbols.length} markets`;
+  $("rTrades").innerHTML = r.trades.length ? r.trades.slice().reverse().map((t, i) =>
+    `<tr class="click" data-i="${r.trades.length - 1 - i}"><td>${new Date(t.entry_time * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
+     <td>${esc(t.symbol)}</td><td><span class="tag ${t.side === "buy" ? "long" : "short"}">${t.side.toUpperCase()}</span></td>
+     <td class="muted">${esc(t.reason)}</td><td class="${cls(t.pnl_inr)}">${inr(t.pnl_inr, true)}</td></tr>`).join("")
+    : `<tr><td colspan="5" class="empty">No trades in this period</td></tr>`;
+  if (r.trades.length) showReplayTrade(r.trades.length - 1);
+}
+async function showReplayTrade(i) {
+  const t = replayData.trades[i];
+  document.querySelectorAll("#rTrades tr").forEach((tr) => tr.classList.toggle("sel", +tr.dataset.i === i));
+  const d = await api(`/api/chart?symbol=${encodeURIComponent(t.symbol)}&source=replay`);
+  $("rChartTitle").textContent = `${t.symbol} · ${t.side === "buy" ? "BUY" : "SELL"} ${t.size} · ${t.reason} · ${inr(t.pnl_inr, true)}`;
+  drawPrice(rChart, d, [
+    { price: t.entry, title: "ENTRY", color: "#94a3b8" },
+    { price: t.stop, title: "STOP", color: "#ef4444" },
+    { price: t.target, title: "TARGET", color: "#22c55e" },
+  ], false);
+  const pad = 60 * 60 * 24 * 3;
+  rChart.chart.timeScale().setVisibleRange({ from: t.entry_time - pad + TZ, to: t.exit_time + pad + TZ });
+}
+$("rTrades").addEventListener("click", (e) => { const tr = e.target.closest("tr[data-i]"); if (tr) showReplayTrade(+tr.dataset.i); });
+
+// ---------------------------------------------------------------- settings
+function fillSettings(c) {
+  $("sStart").value = c.start_inr; $("sTarget").value = c.target_inr; $("sRate").value = c.inr_rate;
+  $("sInst").value = c.instruments; $("sRisk").value = String(c.risk_per_trade);
+  $("sTf").value = c.timeframe; $("sMin").value = c.session_minutes; $("sEngine").value = c.engine || "arena";
+  $("sAgg").value = c.aggression || "normal";
+  $("sProf").value = c.aw_profile || "balanced";
+  $("sRent").value = c.rent_month ?? 200;
+}
+$("applyBtn").onclick = async () => {
+  if (!confirm("Reset the paper account with these settings?")) return;
+  $("applyBtn").disabled = true;
+  await api("/api/reset", { start_inr: +$("sStart").value, target_inr: +$("sTarget").value, inr_rate: +$("sRate").value,
+                            instruments: $("sInst").value, risk_per_trade: +$("sRisk").value,
+                            timeframe: $("sTf").value, session_minutes: +$("sMin").value, engine: $("sEngine").value,
+                            aggression: $("sAgg").value, aw_profile: $("sProf").value, rent_month: +$("sRent").value });
+  $("applyBtn").disabled = false; liveSymbol = null; poll();
+};
+
+// ---------------------------------------------------------------- connect
+$("connectBtn").onclick = () => { $("modal").classList.add("open"); $("kMsg").textContent = ""; };
+$("kCancel").onclick = () => $("modal").classList.remove("open");
+$("kGo").onclick = async () => {
+  $("kMsg").textContent = "Checking…";
+  const r = await api("/api/connect", { key: $("kKey").value, secret: $("kSecret").value, region: $("kRegion").value, save: $("kSave").checked });
+  if (r.ok) { $("modal").classList.remove("open"); $("kSecret").value = ""; poll(); }
+  else $("kMsg").textContent = "Failed: " + (r.error || "unknown error");
+};
+
+// ---------------------------------------------------------------- boot
+liveChart = makePriceChart($("chart"));
+eqChart = makeEqChart($("eqchart"));
+poll();
+</script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+{
+  "meta": {
+    "days": 120,
+    "symbols": [
+      "BTCUSD",
+      "ETHUSD",
+      "SOLUSD",
+      "ARIAUSD",
+      "AKEUSD",
+      "ZECUSD",
+      "XRPUSD",
+      "UNIUSD",
+      "ALTUSD",
+      "BTWUSD",
+      "ARCUSD",
+      "BRUSD",
+      "AAVEUSD",
+      "PARTIUSD",
+      "BMTUSD"
+    ],
+    "candidates": 65745,
+    "tfs": "15m:1h,1h:4h",
+    "entry": "limit"
+  },
+  "validation_all": {
+    "trades": 2475,
+    "win_rate": 0.3878787878787879,
+    "avg_r": -0.1960394205139566,
+    "total_r": -485.19756577204254
+  },
+  "validation_model": {
+    "trades": 46,
+    "win_rate": 0.43478260869565216,
+    "avg_r": -0.5074976446677752,
+    "total_r": -23.344891654717664
+  },
+  "test_all": {
+    "trades": 2446,
+    "win_rate": 0.3887980376124285,
+    "avg_r": -0.15044136900070057,
+    "total_r": -367.9795885757136
+  },
+  "test_model": {
+    "trades": 24,
+    "win_rate": 0.5416666666666666,
+    "avg_r": -0.22223020361772625,
+    "total_r": -5.33352488682543
+  },
+  "threshold": 0.6200000000000003,
+  "test_by_tf": {
+    "15m": {
+      "trades": 24,
+      "win_rate": 0.5416666666666666,
+      "avg_r": -0.22223020361772625,
+      "total_r": -5.33352488682543
+    },
+    "1h": {
+      "trades": 0,
+      "win_rate": 0.0,
+      "avg_r": 0.0,
+      "total_r": 0.0
+    }
+  },
+  "test_by_week": {
+    "2026-10-04": {
+      "trades": 7,
+      "win_rate": 0.2857142857142857,
+      "avg_r": -1.3432260008206591,
+      "total_r": -9.402582005744614
+    },
+    "2026-10-11": {
+      "trades": 9,
+      "win_rate": 0.6666666666666666,
+      "avg_r": 0.4514568035614105,
+      "total_r": 4.0631112320526945
+    },
+    "2026-10-18": {
+      "trades": 8,
+      "win_rate": 0.625,
+      "avg_r": 0.0007432358583112086,
+      "total_r": 0.005945886866489669
+    },
+    "2026-10-25": {
+      "trades": 0,
+      "win_rate": 0.0,
+      "avg_r": 0.0,
+      "total_r": 0.0
+    }
+  }
+}
